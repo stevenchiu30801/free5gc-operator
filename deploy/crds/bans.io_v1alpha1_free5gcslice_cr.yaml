@@ -1,0 +1,7 @@
+apiVersion: bans.io/v1alpha1
+kind: Free5GCSlice
+metadata:
+  name: example-free5gcslice
+spec:
+  # Add fields here
+  size: 3

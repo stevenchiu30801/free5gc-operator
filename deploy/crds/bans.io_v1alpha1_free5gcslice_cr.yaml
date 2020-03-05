@@ -4,4 +4,6 @@ metadata:
   name: example-free5gcslice
 spec:
   # Add fields here
-  size: 3
+  snssaiList:
+    - sst: 1
+      sd: "010203"

@@ -2,16 +2,18 @@ package free5gcslice
 
 import (
 	"context"
+	"fmt"
 
 	bansv1alpha1 "github.com/stevenchiu30801/free5gc-operator/pkg/apis/bans/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
+	helmaction "helm.sh/helm/v3/pkg/action"
+	helmloader "helm.sh/helm/v3/pkg/chart/loader"
+	helmkube "helm.sh/helm/v3/pkg/kube"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -19,7 +21,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logf.Log.WithName("controller_free5gcslice")
+var controllerLogger = logf.Log.WithName("controller_free5gcslice")
+var helmLogger = logf.Log.WithName("helm")
+
+// TODO(user): Modify constant kubeConfigPath to your Kubernetes admin config
+const kubeConfigPath string = "./admin.conf"
+const helmChartsPath string = "./helm-charts"
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -83,7 +90,7 @@ type ReconcileFree5GCSlice struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger := controllerLogger.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling Free5GCSlice")
 
 	// Fetch the Free5GCSlice instance
@@ -100,54 +107,59 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(instance)
-
-	// Set Free5GCSlice instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+	// Check if Mongo DB already exists, if not create a new one
+	mongo := &appsv1.StatefulSet{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: "mongo", Namespace: instance.Namespace}, mongo)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+		reqLogger.Info("Creating Mongo DB", "Namespace", instance.Namespace, "Name", "mongo")
+
+		// Load Mongo DB chart
+		mongoChartPath := helmChartsPath + "/mongo"
+		mongoChart, err := helmloader.Load(mongoChartPath)
 		if err != nil {
+			helmLogger.Error(err, "Failed to load Mongo DB chart at", mongoChartPath)
 			return reconcile.Result{}, err
 		}
 
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
+		// Install Mongo DB chart
+		mongoInstall, err := newHelmInstall(instance.Namespace)
+		if err != nil {
+			return reconcile.Result{}, nil
+		}
+		mongoInstall.Namespace = instance.Namespace
+		mongoInstall.ReleaseName = "mongo"
+		mongoInstall.Wait = true
+		mongoRelease, err := mongoInstall.Run(mongoChart, nil)
+		if err != nil {
+			helmLogger.Error(err, "Failed to install Mongo DB")
+			return reconcile.Result{}, err
+		}
+
+		reqLogger.Info("Successfully create Mongo DB", "Release", mongoRelease.Name)
 	} else if err != nil {
 		return reconcile.Result{}, err
+	} else {
+		// Mongo DB already exists
+		reqLogger.Info("Mongo DB already exists", "Namespace", mongo.Namespace, "Name", mongo.Name)
 	}
 
-	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
 	return reconcile.Result{}, nil
 }
 
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *bansv1alpha1.Free5GCSlice) *corev1.Pod {
-	labels := map[string]string{
-		"app": cr.Name,
+// newHelmInstall creates a new Install object under the given namespace with kubeConfigPath
+func newHelmInstall(namespace string) (*helmaction.Install, error) {
+	actionConfig := new(helmaction.Configuration)
+	err := actionConfig.Init(helmkube.GetConfig(kubeConfigPath, "", namespace), namespace, "", helmDebugLog)
+	if err != nil {
+		helmLogger.Error(err, "Failed to get Kubernetes client config for Helm")
+		return nil, err
 	}
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
-		},
-	}
+
+	return helmaction.NewInstall(actionConfig), nil
+}
+
+// helmDebugLog returns a logger that writes debug strings
+func helmDebugLog(format string, v ...interface{}) {
+	debugMsg := fmt.Sprintf(format, v...)
+	helmLogger.Info(debugMsg)
 }

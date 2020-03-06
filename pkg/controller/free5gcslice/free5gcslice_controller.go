@@ -3,15 +3,18 @@ package free5gcslice
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"os"
 
 	bansv1alpha1 "github.com/stevenchiu30801/free5gc-operator/pkg/apis/bans/v1alpha1"
 	helmaction "helm.sh/helm/v3/pkg/action"
 	helmloader "helm.sh/helm/v3/pkg/chart/loader"
-	helmkube "helm.sh/helm/v3/pkg/kube"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -21,12 +24,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var controllerLogger = logf.Log.WithName("controller_free5gcslice")
+var reqLogger = logf.Log.WithName("controller_free5gcslice")
 var helmLogger = logf.Log.WithName("helm")
 
-// TODO(user): Modify constant kubeConfigPath to your Kubernetes admin config
-const kubeConfigPath string = "./admin.conf"
-const helmChartsPath string = "./helm-charts"
+const helmChartsPath string = "/helm-charts"
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -90,7 +91,6 @@ type ReconcileFree5GCSlice struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := controllerLogger.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling Free5GCSlice")
 
 	// Fetch the Free5GCSlice instance
@@ -146,16 +146,43 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 	return reconcile.Result{}, nil
 }
 
-// newHelmInstall creates a new Install object under the given namespace with kubeConfigPath
+// newHelmInstall creates a new Install object under the given namespace
 func newHelmInstall(namespace string) (*helmaction.Install, error) {
+	const (
+		tokenFile  = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+		rootCAFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	)
+
+	// Create Kubernetes client config to access the api from within a pod
+	// https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/#accessing-the-api-from-within-a-pod
+	serviceHost, servicePort := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
+	apiServer := "https://" + net.JoinHostPort(serviceHost, servicePort)
+	tokenBuf, err := ioutil.ReadFile(tokenFile)
+	if err != nil {
+		helmLogger.Error(err, "Failed to read Kubernetes token file")
+		return nil, err
+	}
+	bearerToken := string(tokenBuf)
+	caFile := rootCAFile
+
+	cf := genericclioptions.NewConfigFlags(true)
+	cf.Namespace = &namespace
+	cf.APIServer = &apiServer
+	cf.BearerToken = &bearerToken
+	cf.CAFile = &caFile
+
+	// Create Helm action.Configuration object
 	actionConfig := new(helmaction.Configuration)
-	err := actionConfig.Init(helmkube.GetConfig(kubeConfigPath, "", namespace), namespace, "", helmDebugLog)
+	err = actionConfig.Init(cf, namespace, "", helmDebugLog)
 	if err != nil {
 		helmLogger.Error(err, "Failed to get Kubernetes client config for Helm")
 		return nil, err
 	}
 
-	return helmaction.NewInstall(actionConfig), nil
+	// Create Helm action.Install obeject
+	actionInstall := helmaction.NewInstall(actionConfig)
+
+	return actionInstall, nil
 }
 
 // helmDebugLog returns a logger that writes debug strings

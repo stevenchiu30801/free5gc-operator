@@ -16,7 +16,7 @@ spec:
       containers:
         - name: free5gc-operator
           # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: steven30801/free5gc-operator:latest
           command:
           - free5gc-operator
           imagePullPolicy: Always

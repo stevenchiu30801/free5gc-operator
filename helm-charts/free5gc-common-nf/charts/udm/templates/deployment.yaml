@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "udm.fullname" . }}
+  labels:
+    {{- include "udm.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "udm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "udm.selectorLabels" . | nindent 8 }}
+      annotations:
+        cni.projectcalico.org/ipAddrs: "[\"{{ .Values.http.addr }}\"]"
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "udm.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/bash"]
+          args: ["-c", "./bin/udm"]
+          stdin: true
+          tty: true
+          volumeMounts:
+            - name: free5gc-config
+              mountPath: /root/gofree5gc/config/free5GC.conf
+              subPath: free5GC.conf
+            - name: udm-config
+              mountPath: /root/gofree5gc/config/udmcfg.conf
+              subPath: udmcfg.conf
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: free5gc-config
+          configMap:
+            name: free5gc-configmap
+        - name: udm-config
+          configMap:
+            name: udm-configmap
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

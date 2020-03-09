@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: udm-configmap
+data:
+  udmcfg.conf: |
+    info:
+      version: 1.0.0
+      description: UDM initial local configuration
+    
+    configuration:
+      serviceNameList:
+        - nudm-sdm
+        - nudm-uecm
+        - nudm-ueau
+        - nudm-ee
+        - nudm-pp
+      sbi:
+        scheme: https
+        ipv4Addr: {{ .Values.http.addr }}
+        port: 29503
+        tls:
+          log: gofree5gc/udmsslkey.log
+          pem: gofree5gc/support/TLS/udm.pem
+          key: gofree5gc/support/TLS/udm.key
+      
+      udrclient:
+        scheme: https
+        ipv4Addr: {{ .Values.udr.addr }}
+        port: 29504
+    
+      nrfclient:
+        scheme: https
+        ipv4Addr: {{ .Values.global.nrf.addr }}
+        port: 29510
+      nrfUri: https://{{ .Values.global.nrf.addr }}:29510

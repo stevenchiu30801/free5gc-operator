@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "webui.fullname" . }}
+  labels:
+    {{- include "webui.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.webuiServiceType }}
+  ports:
+    - name: webui
+{{ toYaml .Values.service.webui | indent 6 }}
+  selector:
+    {{- include "webui.selectorLabels" . | nindent 4 }}

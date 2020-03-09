@@ -1,0 +1,47 @@
+# Default values for smf.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  image:
+    free5gc: {}
+  nrf:
+    addr: 192.168.2.4
+
+replicaCount: 1
+
+image:
+  repository: steven30801/free5gc-build
+  tag: v2.0.2
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+http:
+  addr: 192.168.2.7
+pfcp:
+  addr: 192.168.2.7
+upf:
+  pfcp:
+    addr: 192.168.2.10
+  gtpu:
+    addr: 192.168.2.10
+gnb:
+  addr: 192.168.2.11
+
+sliceIdx: {}
+supportedSnssaiList: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smf-slice{{ .Values.sliceIdx }}-configmap
+data:
+  smfcfg.conf: |
+    info:
+      version: 1.0.0
+      description: AMF initial local configuration
+    
+    configuration:
+      smfName: SMF
+      sbi:
+        scheme: https
+        ipv4Addr: {{ .Values.http.addr }}
+        port: 29502
+        tls:
+          key: gofree5gc/support/TLS/smf.key
+          pem: gofree5gc/support/TLS/smf.pem
+      serviceNameList:
+        - nsmf-pdusession
+        - nsmf-event-exposure
+      pfcp:
+        addr: {{ .Values.pfcp.addr }}
+      userplane_information:
+        up_nodes:
+          gNB:
+            type: AN
+            an_ip: {{ .Values.gnb.addr }}
+          UPF:
+            type: UPF
+            node_id: {{ .Values.upf.pfcp.addr }}
+            up_resource_ip: {{ .Values.upf.gtpu.addr }}
+        links:
+          - A: gNB
+            B: UPF
+      ue_subnet: 60.60.0.0/16
+      nrfUri: https://{{ .Values.global.nrf.addr }}:29510
+      {{- with .Values.supportedSnssaiList }}
+      snssaiList:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ransim.fullname" . }}
+  labels:
+    {{- include "ransim.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ransim.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ransim.selectorLabels" . | nindent 8 }}
+      annotations:
+        cni.projectcalico.org/ipAddrs: "[\"{{ .Values.addr }}\"]"
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "ransim.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/bash"]
+          stdin: true
+          tty: true
+          volumeMounts:
+            - name: test-scripts
+              mountPath: /root/gofree5gc/src/test/registration_test.go
+              subPath: registration_test.go
+            - name: test-scripts
+              mountPath: /root/gofree5gc/src/test/ngsetup_test.go
+              subPath: ngsetup_test.go
+            - name: test-scripts
+              mountPath: /root/gofree5gc/src/test/ue_config.go
+              subPath: ue_config.go
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: test-scripts
+          configMap:
+            name: testscripts-configmap
+            defaultMode: 0755
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

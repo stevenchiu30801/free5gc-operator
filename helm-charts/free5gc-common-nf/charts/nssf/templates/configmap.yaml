@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nssf-configmap
+data:
+  nssfcfg.conf: |
+    info:
+      version: 1.0.0
+      description: NSSF initial local configuration
+    
+    configuration:
+      nssfName: NSSF
+      sbi:
+        scheme: https
+        ipv4Addr: {{ .Values.http.addr }}
+        port: 29531
+      serviceNameList:
+        - nnssf-nsselection
+        - nnssf-nssaiavailability
+      nrfUri: https://{{ .Values.global.nrf.addr }}:29510
+      supportedPlmnList:
+        - mcc: 208
+          mnc: 93
+      supportedNssaiInPlmnList:
+        - plmnId:
+            mcc: 208
+            mnc: 93
+          supportedSnssaiList:
+            - sst: 1
+              sd: 010203
+            - sst: 1
+              sd: 112233
+      nsiList:
+        - snssai:
+            sst: 1
+            sd: 010203
+          nsiInformationList:
+            - nrfId: https://{{ .Values.global.nrf.addr }}:29510
+        - snssai:
+            sst: 1
+            sd: 112233
+          nsiInformationList:
+            - nrfId: https://{{ .Values.global.nrf.addr }}:29510
+      taList:
+        - tai:
+            plmnId:
+              mcc: 208
+              mnc: 93
+            tac: 1
+          accessType: 3GPP_ACCESS
+          supportedSnssaiList:
+            - sst: 1
+              sd: 010203
+            - sst: 1
+              sd: 112233

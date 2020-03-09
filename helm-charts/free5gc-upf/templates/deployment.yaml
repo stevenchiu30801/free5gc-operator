@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "upf.fullname" . }}-slice{{ .Values.sliceIdx }}
+  labels:
+    {{- include "upf.labels" . | nindent 4 }}
+    bans.io/slice: slice{{ .Values.sliceIdx }}
+  annotations:
+    "helm.sh/hook-weight": "-5"
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "upf.selectorLabels" . | nindent 6 }}
+      bans.io/slice: slice{{ .Values.sliceIdx }}
+  template:
+    metadata:
+      labels:
+        {{- include "upf.selectorLabels" . | nindent 8 }}
+        bans.io/slice: slice{{ .Values.sliceIdx }}
+      annotations:
+        cni.projectcalico.org/ipAddrs: "[\"{{ .Values.pfcp.addr }}\"]"
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "upf.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/bash"]
+          args: ["-c", "/root/setup.sh && cd src/upf/build && ./bin/free5gc-upfd"]
+          stdin: true
+          tty: true
+          volumeMounts:
+            - name: free5gc-config
+              mountPath: /root/gofree5gc/config/free5GC.conf
+              subPath: free5GC.conf
+            - name: upf-config
+              mountPath: /root/gofree5gc/src/upf/build/config/upfcfg.yaml
+              subPath: upfcfg.yaml
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: free5gc-config
+          configMap:
+            name: free5gc-configmap
+        - name: upf-config
+          configMap:
+            name: upf-slice{{ .Values.sliceIdx }}-configmap
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

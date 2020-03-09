@@ -1,0 +1,38 @@
+# Default values for ransim.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  image:
+    free5gc: {}
+
+replicaCount: 1
+
+image:
+  repository: steven30801/free5gc-build
+  tag: v2.0.2
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+addr: 192.168.2.11
+amf:
+  ngap:
+    addr: 192.168.2.2
+upf:
+  gtpu:
+    addr: 192.168.2.10
+
+podSecurityContext: {}
+
+securityContext: {}
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webui.fullname" . }}
+  labels:
+    {{- include "webui.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "webui.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "webui.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "webui.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/bash"]
+          args: ["-c", "cd webconsole && go run server.go -webuicfg webuicfg.conf"]
+          ports:
+            - name: webui
+              containerPort: {{ .Values.service.webui.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: free5gc-config
+              mountPath: /root/gofree5gc/config/free5GC.conf
+              subPath: free5GC.conf
+            - name: webui-config
+              mountPath: /root/gofree5gc/webconsole/webuicfg.conf
+              subPath: webuicfg.conf
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: free5gc-config
+          configMap:
+            name: free5gc-configmap
+        - name: webui-config
+          configMap:
+            name: webui-configmap
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

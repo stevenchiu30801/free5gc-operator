@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: udr-configmap
+data:
+  udrcfg.conf: |
+    info:
+      version: 1.0.0
+      description: UDR initial local configuration
+    
+    configuration:
+      sbi:
+        scheme: https
+        ipv4Addr: {{ .Values.http.addr }}
+        port: 29504
+      mongodb:
+        name: free5gc
+        url: mongodb://{{ .Values.global.dbServiceDomain }}:27017
+      nrfUri: https://{{ .Values.global.nrf.addr }}:29510

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: nrf
+description: A Helm chart for NRF
+type: application
+version: 1.0.0
+appVersion: 2.0.2

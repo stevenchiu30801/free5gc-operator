@@ -1,0 +1,36 @@
+# Default values for webui.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  image:
+    free5gc: {}
+
+replicaCount: 1
+
+image:
+  repository: steven30801/free5gc-build
+  tag: v2.0.2
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  webuiServiceType: NodePort
+  webui:
+    port: 5000
+    nodePort: 30300
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

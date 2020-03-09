@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smf.fullname" . }}-slice{{ .Values.sliceIdx }}
+  labels:
+    {{- include "smf.labels" . | nindent 4 }}
+    bans.io/slice: slice{{ .Values.sliceIdx }}
+  annotations:
+    "helm.sh/hook-weight": "5"
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "smf.selectorLabels" . | nindent 6 }}
+      bans.io/slice: slice{{ .Values.sliceIdx }}
+  template:
+    metadata:
+      labels:
+        {{- include "smf.selectorLabels" . | nindent 8 }}
+        bans.io/slice: slice{{ .Values.sliceIdx }}
+      annotations:
+        cni.projectcalico.org/ipAddrs: "[\"{{ .Values.http.addr }}\"]"
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "smf.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/bash"]
+          args: ["-c", "./bin/smf"]
+          stdin: true
+          tty: true
+          volumeMounts:
+            - name: free5gc-config
+              mountPath: /root/gofree5gc/config/free5GC.conf
+              subPath: free5GC.conf
+            - name: smf-config
+              mountPath: /root/gofree5gc/config/smfcfg.conf
+              subPath: smfcfg.conf
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: free5gc-config
+          configMap:
+            name: free5gc-configmap
+        - name: smf-config
+          configMap:
+            name: smf-slice{{ .Values.sliceIdx }}-configmap
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

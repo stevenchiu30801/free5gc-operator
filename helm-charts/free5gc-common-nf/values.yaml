@@ -1,0 +1,70 @@
+# Default values for free5gc.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  image:
+    free5gc: {}
+  dbServiceDomain: mongo.default.svc.cluster.local
+  nrf:
+    addr: 192.168.2.4
+
+amf:
+  http:
+    addr: 192.168.2.2
+  ngap:
+    addr: 192.168.2.2
+
+ausf:
+  http:
+    addr: 192.168.2.3
+
+nrf:
+  http:
+    addr: 192.168.2.4
+
+nssf:
+  http:
+    addr: 192.168.2.5
+
+pcf:
+  http:
+    addr: 192.168.2.6
+
+smf:
+  http:
+    addr: 192.168.2.7
+  pfcp:
+    addr: 192.168.2.7
+  upf:
+    pfcp:
+      addr: 192.168.2.10
+    gtpu:
+      addr: 192.168.2.10
+  gnb:
+    addr: 192.168.2.11
+
+udm:
+  http:
+    addr: 192.168.2.8
+  udr:
+    addr: 192.168.2.9
+
+udr:
+  http:
+    addr: 192.168.2.9
+
+upf:
+  pfcp:
+    addr: 192.168.2.10
+  gtpu:
+    addr: 192.168.2.10
+
+ransim:
+  addr: 192.168.2.11
+  amf:
+    ngap:
+      addr: 192.168.2.2
+  upf:
+    gtpu:
+      addr: 192.168.2.10

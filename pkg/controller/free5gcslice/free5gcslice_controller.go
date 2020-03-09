@@ -91,7 +91,7 @@ type ReconcileFree5GCSlice struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger.Info("Reconciling Free5GCSlice")
+	reqLogger.Info("Reconciling Free5GCSlice", "Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
 	// Fetch the Free5GCSlice instance
 	instance := &bansv1alpha1.Free5GCSlice{}
@@ -124,7 +124,7 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 		// Install Mongo DB chart
 		mongoInstall, err := newHelmInstall(instance.Namespace)
 		if err != nil {
-			return reconcile.Result{}, nil
+			return reconcile.Result{}, err
 		}
 		mongoInstall.Namespace = instance.Namespace
 		mongoInstall.ReleaseName = "mongo"
@@ -134,7 +134,6 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 			helmLogger.Error(err, "Failed to install Mongo DB")
 			return reconcile.Result{}, err
 		}
-
 		reqLogger.Info("Successfully create Mongo DB", "Release", mongoRelease.Name)
 	} else if err != nil {
 		return reconcile.Result{}, err
@@ -142,6 +141,111 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 		// Mongo DB already exists
 		reqLogger.Info("Mongo DB already exists", "Namespace", mongo.Namespace, "Name", mongo.Name)
 	}
+
+	// Create free5GC Helm values
+	vals := map[string]interface{}{
+		"global": map[string]interface{}{
+			"image": map[string]interface{}{
+				"free5gc": map[string]interface{}{
+					"repository": "free5gc-private-build",
+					"tag":        "latest",
+				},
+			},
+		},
+	}
+
+	// Check if AMF, in representation of free5GC common NFs, already exists, if not create new free5GC cluster
+	free5gc := &appsv1.Deployment{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: "free5gc-amf", Namespace: instance.Namespace}, free5gc)
+	if err != nil && errors.IsNotFound(err) {
+		reqLogger.Info("Creating free5GC common NFs", "Namespace", instance.Namespace, "Name", "free5gc-common-nf")
+
+		// Load free5GC common NF chart
+		free5gcChartPath := helmChartsPath + "/free5gc-common-nf"
+		free5gcChart, err := helmloader.Load(free5gcChartPath)
+		if err != nil {
+			helmLogger.Error(err, "Failed to load free5GC commmon NF chart at", free5gcChartPath)
+			return reconcile.Result{}, err
+		}
+
+		// Install free5GC common NF chart
+		free5gcInstall, err := newHelmInstall(instance.Namespace)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		free5gcInstall.Namespace = instance.Namespace
+		free5gcInstall.ReleaseName = "free5gc"
+		free5gcInstall.Wait = true
+		free5gcRelease, err := free5gcInstall.Run(free5gcChart, vals)
+		if err != nil {
+			helmLogger.Error(err, "Failed to install free5GC common NFs")
+			return reconcile.Result{}, err
+		}
+		reqLogger.Info("Successfully create free5GC common NFs", "Release", free5gcRelease.Name)
+	} else if err != nil {
+		return reconcile.Result{}, err
+	} else {
+		// free5GC common NFs already exists
+		reqLogger.Info("free5GC common NFs already exists", "Namespace", free5gc.Namespace, "Name", free5gc.Name)
+	}
+
+	// Create free5GC slice Helm values
+	vals["sliceIdx"] = 1
+	vals["supportedSnssaiList"] = instance.Spec.SnssaiList
+
+	// Create a new slice UPF
+	reqLogger.Info("Creating free5GC new slice UPF", "Namespace", instance.Namespace, "Name", "free5gc-upf", "S-NSSAIList", instance.Spec.SnssaiList)
+
+	// Load free5GC UPF chart
+	upfChartPath := helmChartsPath + "/free5gc-upf"
+	upfChart, err := helmloader.Load(upfChartPath)
+	if err != nil {
+		helmLogger.Error(err, "Failed to load free5GC UPF chart at", upfChartPath)
+		return reconcile.Result{}, err
+	}
+
+	// Install free5GC UPF chart
+	upfInstall, err := newHelmInstall(instance.Namespace)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	upfInstall.Namespace = instance.Namespace
+	upfInstall.ReleaseName = "free5gc-upf"
+	upfInstall.Wait = true
+	upfRelease, err := upfInstall.Run(upfChart, vals)
+	if err != nil {
+		helmLogger.Error(err, "Failed to install free5GC UPF")
+		return reconcile.Result{}, err
+	}
+	reqLogger.Info("Successfully create free5GC UPF", "Release", upfRelease.Name)
+
+	// Create a new slice SMF
+	reqLogger.Info("Creating free5GC new slice SMF", "Namespace", instance.Namespace, "Name", "free5gc-smf", "S-NSSAIList", instance.Spec.SnssaiList)
+
+	// Load free5GC SMF chart
+	smfChartPath := helmChartsPath + "/free5gc-smf"
+	smfChart, err := helmloader.Load(smfChartPath)
+	if err != nil {
+		helmLogger.Error(err, "Failed to load free5GC SMF chart at", smfChartPath)
+		return reconcile.Result{}, err
+	}
+
+	// Install free5GC SMF chart
+	smfInstall, err := newHelmInstall(instance.Namespace)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	smfInstall.Namespace = instance.Namespace
+	smfInstall.ReleaseName = "free5gc-smf"
+	smfInstall.Wait = true
+	smfRelease, err := smfInstall.Run(smfChart, vals)
+	if err != nil {
+		helmLogger.Error(err, "Failed to install free5GC SMF")
+		return reconcile.Result{}, err
+	}
+	reqLogger.Info("Successfully create free5GC SMF", "Release", smfRelease.Name)
+
+	reqLogger.Info("Successfully create free5GC network slice", "SliceID", 1, "S-NSSAIList", instance.Spec.SnssaiList)
 
 	return reconcile.Result{}, nil
 }

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ausf.fullname" . }}
+  labels:
+    {{- include "ausf.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ausf.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ausf.selectorLabels" . | nindent 8 }}
+      annotations:
+        cni.projectcalico.org/ipAddrs: "[\"{{ .Values.http.addr }}\"]"
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "ausf.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/bash"]
+          args: ["-c", "./bin/ausf"]
+          stdin: true
+          tty: true
+          volumeMounts:
+            - name: free5gc-config
+              mountPath: /root/gofree5gc/config/free5GC.conf
+              subPath: free5GC.conf
+            - name: ausf-config
+              mountPath: /root/gofree5gc/config/ausfcfg.conf
+              subPath: ausfcfg.conf
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: free5gc-config
+          configMap:
+            name: free5gc-configmap
+        - name: ausf-config
+          configMap:
+            name: ausf-configmap
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

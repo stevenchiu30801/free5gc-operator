@@ -112,6 +112,11 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
+	// Check if Free5GCSlice.Status.UpfAddr is already set, since changes to Free5GCSlice.Status also triggers reconciling
+	if instance.Status.UpfAddr != "" {
+		return reconcile.Result{}, nil
+	}
+
 	// Check if Mongo DB already exists, if not create a new one
 	mongo := &appsv1.StatefulSet{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: "mongo", Namespace: instance.Namespace}, mongo)

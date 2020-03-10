@@ -1,10 +1,13 @@
 # free5GC Operator
 
-A Kubernetes operator for deploying and managing free5GC network slices in BANS 5GC
+A Kubernetes operator for deploying and managing free5GC network slices in BANS 5GC.
 
-## Pre-install
+## Prerequisites
+
+See [operator-framework/operator-sdk](https://github.com/operator-framework/operator-sdk#prerequisites).
 
 ```Shellsession
+# Pre-install
 sudo apt instal make
 ```
 
@@ -18,7 +21,8 @@ make install
 ## Procedure Test
 
 ```ShellSession
-export RANSIM_POD=$( kubectl get pod -l app.kubernetes.io/instance=free5gc -l app.kubernetes.io/name=ransim -o jsonpath='{.items[0].metadata.name}' )
+# Set ransim pod variable
+export RANSIM_POD=$( kubectl get pods -l app.kubernetes.io/instance=free5gc -l app.kubernetes.io/name=ransim -o jsonpath='{.items[0].metadata.name}' )
 
 # Test registration and data traffic with slice 1
 kubectl exec $RANSIM_POD -- bash -c "cd src/test && go test -vet=off -run TestRegistration -ue-idx=1 -sst=1 -sd=010203"

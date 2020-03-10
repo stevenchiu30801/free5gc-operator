@@ -31,19 +31,6 @@ pcf:
   http:
     addr: 192.168.2.6
 
-smf:
-  http:
-    addr: 192.168.2.7
-  pfcp:
-    addr: 192.168.2.7
-  upf:
-    pfcp:
-      addr: 192.168.2.10
-    gtpu:
-      addr: 192.168.2.10
-  gnb:
-    addr: 192.168.2.11
-
 udm:
   http:
     addr: 192.168.2.8
@@ -54,17 +41,8 @@ udr:
   http:
     addr: 192.168.2.9
 
-upf:
-  pfcp:
-    addr: 192.168.2.10
-  gtpu:
-    addr: 192.168.2.10
-
 ransim:
   addr: 192.168.2.11
   amf:
     ngap:
       addr: 192.168.2.2
-  upf:
-    gtpu:
-      addr: 192.168.2.10

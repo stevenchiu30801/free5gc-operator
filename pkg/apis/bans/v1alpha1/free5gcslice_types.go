@@ -21,6 +21,9 @@ type Free5GCSliceSpec struct {
 
     // S-NSSAI list
     SnssaiList []Snssai `json:"snssaiList"`
+
+    // gNodeB address
+    GNBAddr string `json:"gNBAddr"`
 }
 
 // Free5GCSliceStatus defines the observed state of Free5GCSlice

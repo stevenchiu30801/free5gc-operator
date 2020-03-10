@@ -31,6 +31,9 @@ spec:
         spec:
           description: Free5GCSliceSpec defines the desired state of Free5GCSlice
           properties:
+            gNBAddr:
+              description: gNodeB address
+              type: string
             snssaiList:
               description: S-NSSAI list
               items:
@@ -47,6 +50,7 @@ spec:
                 type: object
               type: array
           required:
+          - gNBAddr
           - snssaiList
           type: object
         status:

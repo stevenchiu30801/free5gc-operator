@@ -7,3 +7,4 @@ spec:
   snssaiList:
     - sst: 1
       sd: "010203"
+  gNBAddr: "192.168.2.11"

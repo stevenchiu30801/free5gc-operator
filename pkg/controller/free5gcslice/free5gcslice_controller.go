@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"strconv"
 
 	bansv1alpha1 "github.com/stevenchiu30801/free5gc-operator/pkg/apis/bans/v1alpha1"
 	helmaction "helm.sh/helm/v3/pkg/action"
@@ -28,6 +29,10 @@ var reqLogger = logf.Log.WithName("controller_free5gcslice")
 var helmLogger = logf.Log.WithName("helm")
 
 const helmChartsPath string = "/helm-charts"
+
+var sliceIdx int = 1
+var ipPoolNetworkID24 string = "192.168.2."
+var ipPoolHostID int = 100
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -160,28 +165,10 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 	if err != nil && errors.IsNotFound(err) {
 		reqLogger.Info("Creating free5GC common NFs", "Namespace", instance.Namespace, "Name", "free5gc-common-nf")
 
-		// Load free5GC common NF chart
-		free5gcChartPath := helmChartsPath + "/free5gc-common-nf"
-		free5gcChart, err := helmloader.Load(free5gcChartPath)
-		if err != nil {
-			helmLogger.Error(err, "Failed to load free5GC commmon NF chart at", free5gcChartPath)
-			return reconcile.Result{}, err
-		}
-
-		// Install free5GC common NF chart
-		free5gcInstall, err := newHelmInstall(instance.Namespace)
+		err = installHelmChart(instance.Namespace, "free5gc-common-nf", "free5gc", vals)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		free5gcInstall.Namespace = instance.Namespace
-		free5gcInstall.ReleaseName = "free5gc"
-		free5gcInstall.Wait = true
-		free5gcRelease, err := free5gcInstall.Run(free5gcChart, vals)
-		if err != nil {
-			helmLogger.Error(err, "Failed to install free5GC common NFs")
-			return reconcile.Result{}, err
-		}
-		reqLogger.Info("Successfully create free5GC common NFs", "Release", free5gcRelease.Name)
 	} else if err != nil {
 		return reconcile.Result{}, err
 	} else {
@@ -190,64 +177,96 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	// Create free5GC slice Helm values
-	vals["sliceIdx"] = 1
+	vals["sliceIdx"] = sliceIdx
 	vals["supportedSnssaiList"] = instance.Spec.SnssaiList
 
 	// Create a new slice UPF
 	reqLogger.Info("Creating free5GC new slice UPF", "Namespace", instance.Namespace, "Name", "free5gc-upf", "S-NSSAIList", instance.Spec.SnssaiList)
 
-	// Load free5GC UPF chart
-	upfChartPath := helmChartsPath + "/free5gc-upf"
-	upfChart, err := helmloader.Load(upfChartPath)
-	if err != nil {
-		helmLogger.Error(err, "Failed to load free5GC UPF chart at", upfChartPath)
-		return reconcile.Result{}, err
+	upfAddr := newIP()
+	upfVals := vals
+	upfVals["pfcp"] = map[string]interface{}{
+		"addr": upfAddr,
+	}
+	upfVals["gtpu"] = map[string]interface{}{
+		"addr": upfAddr,
 	}
 
-	// Install free5GC UPF chart
-	upfInstall, err := newHelmInstall(instance.Namespace)
+	err = installHelmChart(instance.Namespace, "free5gc-upf", "free5gc-upf-slice"+strconv.Itoa(sliceIdx), upfVals)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	upfInstall.Namespace = instance.Namespace
-	upfInstall.ReleaseName = "free5gc-upf"
-	upfInstall.Wait = true
-	upfRelease, err := upfInstall.Run(upfChart, vals)
-	if err != nil {
-		helmLogger.Error(err, "Failed to install free5GC UPF")
-		return reconcile.Result{}, err
-	}
-	reqLogger.Info("Successfully create free5GC UPF", "Release", upfRelease.Name)
 
 	// Create a new slice SMF
 	reqLogger.Info("Creating free5GC new slice SMF", "Namespace", instance.Namespace, "Name", "free5gc-smf", "S-NSSAIList", instance.Spec.SnssaiList)
 
-	// Load free5GC SMF chart
-	smfChartPath := helmChartsPath + "/free5gc-smf"
-	smfChart, err := helmloader.Load(smfChartPath)
+	smfAddr := newIP()
+	smfVals := vals
+	smfVals["http"] = map[string]interface{}{
+		"addr": smfAddr,
+	}
+	smfVals["pfcp"] = map[string]interface{}{
+		"addr": smfAddr,
+	}
+	smfVals["upf"] = map[string]interface{}{
+		"pfcp": map[string]interface{}{
+			"addr": upfAddr,
+		},
+		"gtpu": map[string]interface{}{
+			"addr": upfAddr,
+		},
+	}
+	smfVals["gnb"] = map[string]interface{}{
+		"addr": instance.Spec.GNBAddr,
+	}
+
+	err = installHelmChart(instance.Namespace, "free5gc-smf", "free5gc-smf-slice"+strconv.Itoa(sliceIdx), smfVals)
 	if err != nil {
-		helmLogger.Error(err, "Failed to load free5GC SMF chart at", smfChartPath)
 		return reconcile.Result{}, err
 	}
 
-	// Install free5GC SMF chart
-	smfInstall, err := newHelmInstall(instance.Namespace)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	smfInstall.Namespace = instance.Namespace
-	smfInstall.ReleaseName = "free5gc-smf"
-	smfInstall.Wait = true
-	smfRelease, err := smfInstall.Run(smfChart, vals)
-	if err != nil {
-		helmLogger.Error(err, "Failed to install free5GC SMF")
-		return reconcile.Result{}, err
-	}
-	reqLogger.Info("Successfully create free5GC SMF", "Release", smfRelease.Name)
-
-	reqLogger.Info("Successfully create free5GC network slice", "SliceID", 1, "S-NSSAIList", instance.Spec.SnssaiList)
+	reqLogger.Info("Successfully create free5GC network slice", "SliceID", sliceIdx, "S-NSSAIList", instance.Spec.SnssaiList)
+	sliceIdx++
 
 	return reconcile.Result{}, nil
+}
+
+// newIP returns an available IP in string
+// TODO(dev): Maintain IP pool to support release of IPs
+func newIP() string {
+	newIp := ipPoolNetworkID24 + strconv.Itoa(ipPoolHostID)
+	ipPoolHostID++
+
+	return newIp
+}
+
+// installHelmChart installs the given Helm chart with values
+func installHelmChart(namespace string, chartName string, releaseName string, vals map[string]interface{}) error {
+	// Load Helm chart
+	chartPath := helmChartsPath + "/" + chartName
+	chart, err := helmloader.Load(chartPath)
+	if err != nil {
+		helmLogger.Error(err, "Failed to load Helm chart at", chartPath)
+		return err
+	}
+
+	// Install Helm chart
+	install, err := newHelmInstall(namespace)
+	if err != nil {
+		return err
+	}
+	install.Namespace = namespace
+	install.ReleaseName = releaseName
+	install.Wait = true
+	release, err := install.Run(chart, vals)
+	if err != nil {
+		helmLogger.Error(err, "Failed to install Helm chart", chartName)
+		return err
+	}
+
+	reqLogger.Info("Successfully create Helm chart "+chartName, "Release", release.Name)
+
+	return nil
 }
 
 // newHelmInstall creates a new Install object under the given namespace

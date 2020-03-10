@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "smf.fullname" . }}-slice{{ .Values.sliceIdx }}
+  name: {{ include "smf.fullname" . }}
   labels:
     {{- include "smf.labels" . | nindent 4 }}
     bans.io/slice: slice{{ .Values.sliceIdx }}

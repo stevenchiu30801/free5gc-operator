@@ -9,8 +9,8 @@ import (
 
 // S-NSSAI
 type Snssai struct {
-    Sst int32 `json:"sst"`
-    Sd string `json:"sd"`
+	Sst int32  `json:"sst"`
+	Sd  string `json:"sd"`
 }
 
 // Free5GCSliceSpec defines the desired state of Free5GCSlice
@@ -19,11 +19,11 @@ type Free5GCSliceSpec struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 
-    // S-NSSAI list
-    SnssaiList []Snssai `json:"snssaiList"`
+	// S-NSSAI list
+	SnssaiList []Snssai `json:"snssaiList"`
 
-    // gNodeB address
-    GNBAddr string `json:"gNBAddr"`
+	// gNodeB address
+	GNBAddr string `json:"gNBAddr"`
 }
 
 // Free5GCSliceStatus defines the observed state of Free5GCSlice
@@ -32,8 +32,8 @@ type Free5GCSliceStatus struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 
-    // UPF address
-    UpfAddr string `json:"upfAddr"`
+	// UPF address
+	UpfAddr string `json:"upfAddr"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

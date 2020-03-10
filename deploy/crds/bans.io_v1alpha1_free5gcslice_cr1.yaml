@@ -1,0 +1,10 @@
+apiVersion: bans.io/v1alpha1
+kind: Free5GCSlice
+metadata:
+  name: example-free5gcslice1
+spec:
+  # Add fields here
+  snssaiList:
+    - sst: 1
+      sd: "010203"
+  gNBAddr: "192.168.2.11"

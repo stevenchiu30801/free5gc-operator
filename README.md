@@ -11,14 +11,16 @@ See [operator-framework/operator-sdk](https://github.com/operator-framework/oper
 sudo apt instal make
 ```
 
-## Run
+## Usage
+
+### Run
 
 ```ShellSession
 # Install all resources (CR/CRD's, RBAC and Operator)
 make install
 ```
 
-## Procedure Test
+### Procedure Test
 
 ```ShellSession
 # Set ransim pod variable
@@ -37,7 +39,7 @@ kubectl get pods -l app.kubernetes.io/name=free5gc-smf,bans.io/slice=slice2 | gr
 kubectl exec $RANSIM_POD -- bash -c "cd src/test && go test -vet=off -run TestRegistration -ue-idx=2 -sst=1 -sd=112233"
 ```
 
-## Reset
+### Reset
 
 ```ShellSession
 # Uninstall all that all performed in the $ make install

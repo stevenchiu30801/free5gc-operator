@@ -49,6 +49,8 @@ uninstall: ## Uninstall all that all performed in the $ make install
 build: ## Build Operator
 	$(call echo_green,"...... Building Operator ......")
 	operator-sdk build steven30801/free5gc-operator
+	$(call echo_green,"...... Pushing image ......")
+	docker push steven30801/free5gc-operator
 
 reset-free5gc: ## Uninstall all free5GC functions along with CR except Mongo DB
 	-helm uninstall free5gc

@@ -225,7 +225,14 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
+	instance.Status.UpfAddr = upfAddr
+	err = r.client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		reqLogger.Error(err, "Failed to update Free5GCSlice status")
+		return reconcile.Result{}, err
+	}
 	reqLogger.Info("Successfully create free5GC network slice", "SliceID", sliceIdx, "S-NSSAIList", instance.Spec.SnssaiList)
+
 	sliceIdx++
 
 	return reconcile.Result{}, nil

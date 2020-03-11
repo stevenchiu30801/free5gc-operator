@@ -30,7 +30,10 @@ var helmLogger = logf.Log.WithName("helm")
 
 const helmChartsPath string = "/helm-charts"
 
+const finalizerName string = "free5gcslice.finalizer.bans.io"
+
 var sliceIdx int = 1
+var free5gcsliceMap map[string]int = make(map[string]int)
 var ipPoolNetworkID24 string = "192.168.2."
 var ipPoolHostID int = 100
 
@@ -112,6 +115,42 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
+	// Check if Free5GCSlice object is under deletion
+	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
+		// The object is not being deleted
+		// Add the finalizer if not registering it
+		if !containsString(instance.ObjectMeta.Finalizers, finalizerName) {
+			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, finalizerName)
+			if err := r.client.Update(context.Background(), instance); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+	} else {
+		// The object is being deleted
+		if containsString(instance.ObjectMeta.Finalizers, finalizerName) {
+			// The finalizer if present
+			// Delete external Helm resources
+			smfReleaseName := "free5gc-smf-slice" + strconv.Itoa(free5gcsliceMap[instance.Name])
+			if err := uninstallHelmChart(instance.Namespace, smfReleaseName); err != nil {
+				return reconcile.Result{}, err
+			}
+
+			upfReleaseName := "free5gc-upf-slice" + strconv.Itoa(free5gcsliceMap[instance.Name])
+			if err := uninstallHelmChart(instance.Namespace, upfReleaseName); err != nil {
+				return reconcile.Result{}, err
+			}
+
+			// Remove finalizer from Free5GCSlice object
+			instance.ObjectMeta.Finalizers = removeString(instance.ObjectMeta.Finalizers, finalizerName)
+			if err := r.client.Update(context.Background(), instance); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+
+		// Stop reconciliation as the object is being deleted
+		return reconcile.Result{}, nil
+	}
+
 	// Check if Free5GCSlice.Status.UpfAddr is already set, since changes to Free5GCSlice.Status also triggers reconciling
 	if instance.Status.UpfAddr != "" {
 		return reconcile.Result{}, nil
@@ -123,28 +162,10 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 	if err != nil && errors.IsNotFound(err) {
 		reqLogger.Info("Creating Mongo DB", "Namespace", instance.Namespace, "Name", "mongo")
 
-		// Load Mongo DB chart
-		mongoChartPath := helmChartsPath + "/mongo"
-		mongoChart, err := helmloader.Load(mongoChartPath)
-		if err != nil {
-			helmLogger.Error(err, "Failed to load Mongo DB chart at", mongoChartPath)
-			return reconcile.Result{}, err
-		}
-
-		// Install Mongo DB chart
-		mongoInstall, err := newHelmInstall(instance.Namespace)
+		err = installHelmChart(instance.Namespace, "mongo", "mongo", nil)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		mongoInstall.Namespace = instance.Namespace
-		mongoInstall.ReleaseName = "mongo"
-		mongoInstall.Wait = true
-		mongoRelease, err := mongoInstall.Run(mongoChart, nil)
-		if err != nil {
-			helmLogger.Error(err, "Failed to install Mongo DB")
-			return reconcile.Result{}, err
-		}
-		reqLogger.Info("Successfully create Mongo DB", "Release", mongoRelease.Name)
 	} else if err != nil {
 		return reconcile.Result{}, err
 	} else {
@@ -188,6 +209,7 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 	// Create a new slice UPF
 	reqLogger.Info("Creating free5GC new slice UPF", "Namespace", instance.Namespace, "Name", "free5gc-upf", "S-NSSAIList", instance.Spec.SnssaiList)
 
+	// Create UPF Helm values
 	upfAddr := newIP()
 	upfVals := vals
 	upfVals["pfcp"] = map[string]interface{}{
@@ -205,6 +227,7 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 	// Create a new slice SMF
 	reqLogger.Info("Creating free5GC new slice SMF", "Namespace", instance.Namespace, "Name", "free5gc-smf", "S-NSSAIList", instance.Spec.SnssaiList)
 
+	// Create SMF Helm values
 	smfAddr := newIP()
 	smfVals := vals
 	smfVals["http"] = map[string]interface{}{
@@ -238,9 +261,35 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 	}
 	reqLogger.Info("Successfully create free5GC network slice", "SliceID", sliceIdx, "S-NSSAIList", instance.Spec.SnssaiList)
 
+	// Maintain mapping between Free5GCSlice object name and slice ID
+	free5gcsliceMap[instance.Name] = sliceIdx
 	sliceIdx++
 
 	return reconcile.Result{}, nil
+}
+
+// Helper functions to check and remove string from a slice of strings.
+// See https://github.com/kubernetes-sigs/kubebuilder/blob/master/docs/book/src/cronjob-tutorial/testdata/finalizer_example.go
+
+// containsString checks if the given slice of string contains the target string
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+// removeString removes the target string from the given slice of string
+func removeString(slice []string, s string) (result []string) {
+	for _, item := range slice {
+		if item == s {
+			continue
+		}
+		result = append(result, item)
+	}
+	return
 }
 
 // newIP returns an available IP in string
@@ -258,31 +307,32 @@ func installHelmChart(namespace string, chartName string, releaseName string, va
 	chartPath := helmChartsPath + "/" + chartName
 	chart, err := helmloader.Load(chartPath)
 	if err != nil {
-		helmLogger.Error(err, "Failed to load Helm chart at", chartPath)
+		helmLogger.Error(err, "Failed to load Helm chart at", "ChartPath", chartPath)
 		return err
 	}
 
 	// Install Helm chart
-	install, err := newHelmInstall(namespace)
+	actionConfig, err := newHelmConfiguration(namespace)
 	if err != nil {
 		return err
 	}
+	install := helmaction.NewInstall(actionConfig)
 	install.Namespace = namespace
 	install.ReleaseName = releaseName
 	install.Wait = true
 	release, err := install.Run(chart, vals)
 	if err != nil {
-		helmLogger.Error(err, "Failed to install Helm chart", chartName)
+		helmLogger.Error(err, "Failed to install Helm chart", "ChartName", chartName)
 		return err
 	}
 
-	reqLogger.Info("Successfully create Helm chart "+chartName, "Release", release.Name)
+	reqLogger.Info("Successfully create Helm chart", "ChartName", release.Chart.Metadata.Name, "ReleaseName", release.Name)
 
 	return nil
 }
 
-// newHelmInstall creates a new Install object under the given namespace
-func newHelmInstall(namespace string) (*helmaction.Install, error) {
+// newHelmConfiguration creates a new Helm Configuration object under the given namespace
+func newHelmConfiguration(namespace string) (*helmaction.Configuration, error) {
 	const (
 		tokenFile  = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 		rootCAFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
@@ -314,14 +364,30 @@ func newHelmInstall(namespace string) (*helmaction.Install, error) {
 		return nil, err
 	}
 
-	// Create Helm action.Install obeject
-	actionInstall := helmaction.NewInstall(actionConfig)
-
-	return actionInstall, nil
+	return actionConfig, nil
 }
 
 // helmDebugLog returns a logger that writes debug strings
 func helmDebugLog(format string, v ...interface{}) {
 	debugMsg := fmt.Sprintf(format, v...)
 	helmLogger.Info(debugMsg)
+}
+
+// uninstallHelmChart uninstalls the given Helm chart name
+func uninstallHelmChart(namespace string, releaseName string) error {
+	// Uninstall Helm chart
+	actionConfig, err := newHelmConfiguration(namespace)
+	if err != nil {
+		return err
+	}
+	uninstall := helmaction.NewUninstall(actionConfig)
+	response, err := uninstall.Run(releaseName)
+	if err != nil {
+		helmLogger.Error(err, "Failed to uninstall Helm release", "ReleaseName", releaseName)
+		return err
+	}
+
+	reqLogger.Info("Successfully uninstall Helm release", "ReleaseName", response.Release.Name)
+
+	return nil
 }

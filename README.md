@@ -16,13 +16,16 @@ sudo apt instal make
 ### Run
 
 ```ShellSession
-# Install all resources (CR/CRD's, RBAC and Operator)
+# Install all resources (CRD's, RBAC and Operator)
 make install
 ```
 
 ### Procedure Test
 
 ```ShellSession
+# Create a new CR
+kubectl apply -f deploy/crds/bans.io_v1alpha1_free5gcslice_cr1.yaml
+
 # Set ransim pod variable
 export RANSIM_POD=$( kubectl get pods -l app.kubernetes.io/instance=free5gc -l app.kubernetes.io/name=ransim -o jsonpath='{.items[0].metadata.name}' )
 

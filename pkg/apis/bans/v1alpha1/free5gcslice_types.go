@@ -32,6 +32,9 @@ type Free5GCSliceStatus struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 
+	// State of free5GC Slice
+	State string `json:"state"`
+
 	// UPF address
 	UpfAddr string `json:"upfAddr"`
 }

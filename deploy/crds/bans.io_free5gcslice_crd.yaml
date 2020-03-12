@@ -56,10 +56,14 @@ spec:
         status:
           description: Free5GCSliceStatus defines the observed state of Free5GCSlice
           properties:
+            state:
+              description: State of free5GC Slice
+              type: string
             upfAddr:
               description: UPF address
               type: string
           required:
+          - state
           - upfAddr
           type: object
       type: object

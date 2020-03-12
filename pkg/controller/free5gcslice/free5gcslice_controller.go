@@ -32,6 +32,14 @@ const helmChartsPath string = "/helm-charts"
 
 const finalizerName string = "free5gcslice.finalizer.bans.io"
 
+// State of Free5GCSlice
+const (
+	StateNull     string = ""
+	StateCreating string = "Creating"
+	StateRunning  string = "Running"
+)
+
+// TODO(dev): Use database or volume to maintain the following soft state
 var sliceIdx int = 1
 var free5gcsliceMap map[string]int = make(map[string]int)
 var ipPoolNetworkID24 string = "192.168.2."
@@ -151,9 +159,20 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, nil
 	}
 
-	// Check if Free5GCSlice.Status.UpfAddr is already set, since changes to Free5GCSlice.Status also triggers reconciling
-	if instance.Status.UpfAddr != "" {
+	// Check Free5GCSlice.Status.State, if state is Running or Creating then return and don't requeue
+	if instance.Status.State == StateRunning || instance.Status.State == StateCreating {
 		return reconcile.Result{}, nil
+	} else if instance.Status.State != StateNull {
+		err := fmt.Errorf("Unknown Free5GCSlice.Status.State %s", instance.Status.State)
+		return reconcile.Result{}, err
+	}
+
+	// Update Free5GCSlice.Status.State to Creating
+	instance.Status.State = StateCreating
+	err = r.client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		reqLogger.Error(err, "Failed to update Free5GCSlice status")
+		return reconcile.Result{}, err
 	}
 
 	// Check if Mongo DB already exists, if not create a new one
@@ -253,17 +272,20 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	instance.Status.UpfAddr = upfAddr
-	err = r.client.Status().Update(context.TODO(), instance)
-	if err != nil {
-		reqLogger.Error(err, "Failed to update Free5GCSlice status")
-		return reconcile.Result{}, err
-	}
 	reqLogger.Info("Successfully create free5GC network slice", "SliceID", sliceIdx, "S-NSSAIList", instance.Spec.SnssaiList)
 
 	// Maintain mapping between Free5GCSlice object name and slice ID
 	free5gcsliceMap[instance.Name] = sliceIdx
 	sliceIdx++
+
+	// Update Free5GCSlice.Status.UpfAddr and Free5GCSlice.Status.State
+	instance.Status.UpfAddr = upfAddr
+	instance.Status.State = StateRunning
+	err = r.client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		reqLogger.Error(err, "Failed to update Free5GCSlice status")
+		return reconcile.Result{}, err
+	}
 
 	return reconcile.Result{}, nil
 }

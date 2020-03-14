@@ -8,6 +8,7 @@ import (
 	bansv1alpha1 "github.com/stevenchiu30801/free5gc-operator/pkg/apis/bans/v1alpha1"
 	helm "github.com/stevenchiu30801/onos-bandwidth-operator/pkg/helm"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -270,7 +271,18 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 	free5gcsliceMap[instance.Name] = sliceIdx
 	sliceIdx++
 
-	// Update Free5GCSlice.Status.UpfAddr and Free5GCSlice.Status.State
+	// Update Free5GCSlice.Status.AmfAddr, Free5GCSlice.Status.UpfAddr and Free5GCSlice.Status.State
+	amfList := &corev1.PodList{}
+	opts := []client.ListOption{
+		client.InNamespace(instance.Namespace),
+		client.MatchingLabels(map[string]string{"app.kubernetes.io/instance": "free5gc", "app.kubernetes.io/name": "amf"}),
+	}
+	err = r.client.List(context.TODO(), amfList, opts...)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	// Access the first AMF
+	instance.Status.AmfAddr = amfList.Items[0].Status.PodIP
 	instance.Status.UpfAddr = upfAddr
 	instance.Status.State = StateRunning
 	err = r.client.Status().Update(context.TODO(), instance)

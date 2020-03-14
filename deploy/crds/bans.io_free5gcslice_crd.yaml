@@ -56,6 +56,9 @@ spec:
         status:
           description: Free5GCSliceStatus defines the observed state of Free5GCSlice
           properties:
+            amfAddr:
+              description: AMF address
+              type: string
             state:
               description: State of free5GC Slice
               type: string
@@ -63,6 +66,7 @@ spec:
               description: UPF address
               type: string
           required:
+          - amfAddr
           - state
           - upfAddr
           type: object

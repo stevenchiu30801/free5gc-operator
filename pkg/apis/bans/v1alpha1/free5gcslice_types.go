@@ -35,6 +35,9 @@ type Free5GCSliceStatus struct {
 	// State of free5GC Slice
 	State string `json:"state"`
 
+	// AMF address
+	AmfAddr string `json:"amfAddr"`
+
 	// UPF address
 	UpfAddr string `json:"upfAddr"`
 }

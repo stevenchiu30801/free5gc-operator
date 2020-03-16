@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	bansv1alpha1 "github.com/stevenchiu30801/free5gc-operator/pkg/apis/bans/v1alpha1"
 	helm "github.com/stevenchiu30801/onos-bandwidth-operator/pkg/helm"
@@ -139,6 +140,30 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 			upfReleaseName := "free5gc-upf-slice" + strconv.Itoa(free5gcsliceMap[instance.Name])
 			if err := helm.UninstallHelmChart(instance.Namespace, upfReleaseName); err != nil {
 				return reconcile.Result{}, err
+			}
+
+			// Wait for SMF and UPF being removed
+			for {
+				smfName := "free5gc-smf-slice" + strconv.Itoa(free5gcsliceMap[instance.Name])
+				smf := &appsv1.Deployment{}
+				err := r.client.Get(context.TODO(), types.NamespacedName{Name: smfName, Namespace: instance.Namespace}, smf)
+				if err != nil && errors.IsNotFound(err) {
+					break
+				} else if err != nil {
+					return reconcile.Result{}, err
+				}
+				time.Sleep(1 * time.Second)
+			}
+			for {
+				upfName := "free5gc-upf-slice" + strconv.Itoa(free5gcsliceMap[instance.Name])
+				upf := &appsv1.Deployment{}
+				err := r.client.Get(context.TODO(), types.NamespacedName{Name: upfName, Namespace: instance.Namespace}, upf)
+				if err != nil && errors.IsNotFound(err) {
+					break
+				} else if err != nil {
+					return reconcile.Result{}, err
+				}
+				time.Sleep(1 * time.Second)
 			}
 
 			// Remove finalizer from Free5GCSlice object

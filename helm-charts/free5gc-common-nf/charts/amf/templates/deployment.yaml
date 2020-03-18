@@ -4,6 +4,8 @@ metadata:
   name: {{ include "amf.fullname" . }}
   labels:
     {{- include "amf.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook-weight": "-5"
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -15,6 +17,7 @@ spec:
         {{- include "amf.selectorLabels" . | nindent 8 }}
       annotations:
         cni.projectcalico.org/ipAddrs: "[\"{{ .Values.http.addr }}\"]"
+        k8s.v1.cni.cncf.io/networks: amf-bridge-net
     spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}

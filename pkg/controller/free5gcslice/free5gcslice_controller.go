@@ -2,6 +2,7 @@ package free5gcslice
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -36,8 +37,10 @@ const (
 // TODO(dev): Use database or volume to maintain the following soft state
 var sliceIdx int = 1
 var free5gcsliceMap map[string]int = make(map[string]int)
-var ipPoolNetworkID24 string = "192.168.2."
-var ipPoolHostID int = 100
+var controlIpPoolNetworkID24 string = "192.168.2."
+var controlIpPoolHostID int = 100
+var dataIpPoolNetworkID24 string = "192.168.3."
+var dataIpPoolHostID int = 100
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -247,13 +250,14 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 	reqLogger.Info("Creating free5GC new slice UPF", "Namespace", instance.Namespace, "Name", "free5gc-upf", "S-NSSAIList", instance.Spec.SnssaiList)
 
 	// Create UPF Helm values
-	upfAddr := newIP()
+	upfPfcpAddr := newControlIP()
+	upfGtpuAddr := newDataIP()
 	upfVals := vals
 	upfVals["pfcp"] = map[string]interface{}{
-		"addr": upfAddr,
+		"addr": upfPfcpAddr,
 	}
 	upfVals["gtpu"] = map[string]interface{}{
-		"addr": upfAddr,
+		"addr": upfGtpuAddr,
 	}
 
 	err = helm.InstallHelmChart(instance.Namespace, "free5gc-upf", "free5gc-upf-slice"+strconv.Itoa(sliceIdx), upfVals)
@@ -265,7 +269,7 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 	reqLogger.Info("Creating free5GC new slice SMF", "Namespace", instance.Namespace, "Name", "free5gc-smf", "S-NSSAIList", instance.Spec.SnssaiList)
 
 	// Create SMF Helm values
-	smfAddr := newIP()
+	smfAddr := newControlIP()
 	smfVals := vals
 	smfVals["http"] = map[string]interface{}{
 		"addr": smfAddr,
@@ -275,10 +279,10 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 	}
 	smfVals["upf"] = map[string]interface{}{
 		"pfcp": map[string]interface{}{
-			"addr": upfAddr,
+			"addr": upfPfcpAddr,
 		},
 		"gtpu": map[string]interface{}{
-			"addr": upfAddr,
+			"addr": upfGtpuAddr,
 		},
 	}
 	smfVals["gnb"] = map[string]interface{}{
@@ -307,8 +311,20 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 	// Access the first AMF
-	instance.Status.AmfAddr = amfList.Items[0].Status.PodIP
-	instance.Status.UpfAddr = upfAddr
+	// Decode IP address of banscore bridge interface from pod metadata
+	amfNetworkStatus := amfList.Items[0].ObjectMeta.Annotations["k8s.v1.cni.cncf.io/networks-status"]
+	var decoded []map[string]interface{}
+	err = json.Unmarshal([]byte(amfNetworkStatus), &decoded)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	for _, item := range decoded {
+		if item["name"].(string) == "banscore" {
+			instance.Status.AmfAddr = item["ips"].([]interface{})[0].(string)
+			break
+		}
+	}
+	instance.Status.UpfAddr = upfGtpuAddr
 	instance.Status.State = StateRunning
 	err = r.client.Status().Update(context.TODO(), instance)
 	if err != nil {
@@ -343,11 +359,20 @@ func removeString(slice []string, s string) (result []string) {
 	return
 }
 
-// newIP returns an available IP in string
-// TODO(dev): Maintain IP pool to support release of IPs
-func newIP() string {
-	newIp := ipPoolNetworkID24 + strconv.Itoa(ipPoolHostID)
-	ipPoolHostID++
+// newControlIP returns an available control plane IP in string
+// TODO(dev): Maintain control plane IP pool to support release of IPs
+func newControlIP() string {
+	newIp := controlIpPoolNetworkID24 + strconv.Itoa(controlIpPoolHostID)
+	controlIpPoolHostID++
+
+	return newIp
+}
+
+// newDataIP returns an available data plane IP in string
+// TODO(dev): Maintain data plane IP pool to support release of IPs
+func newDataIP() string {
+	newIp := dataIpPoolNetworkID24 + strconv.Itoa(dataIpPoolHostID)
+	dataIpPoolHostID++
 
 	return newIp
 }

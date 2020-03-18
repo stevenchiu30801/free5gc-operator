@@ -1,0 +1,23 @@
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: ransim-bridge-net
+  annotations:
+    "helm.sh/hook-weight": "-5"
+spec:
+  config: '{
+    "name": "bansaccess",
+    "type": "bridge",
+    "bridge": "bansaccess",
+    "ipam": {
+{{- range $key, $val := .Values.global.mnAccessBridge }}
+      {{ $key | quote }}: {{ $val | quote }},
+{{- end }}
+      "type": "host-local"
+    },
+    "args": {
+      "cni": {
+        "ips": ["{{ .Values.data.addr }}"]
+      }
+    }
+  }'

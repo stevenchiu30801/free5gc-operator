@@ -13,9 +13,13 @@ define echo_red
 	@echo -e "${COLOR_LIGHT_RED}${1}${COLOR_WHITE}"
 endef
 
-.PHONY: install uninstall build
+.PHONY: setup install uninstall build reset-free5gc
 
-install: ## Install all resources (CR/CRD's, RBAC and Operator)
+setup: ## Setup environment
+	$(call echo_green," ...... Setup Environment ......")
+	kubectl apply -f https://raw.githubusercontent.com/intel/multus-cni/master/images/multus-daemonset.yml
+
+install: setup ## Install all resources (CR/CRD's, RBAC and Operator)
 	$(call echo_green," ....... Creating namespace .......")
 	-kubectl create namespace ${NAMESPACE}
 	$(call echo_green," ....... Applying CRDs .......")
@@ -59,3 +63,5 @@ reset-free5gc: ## Uninstall all free5GC functions along with CR except Mongo DB
 	-${SHELL} scripts/clear_mongo.sh
 	-${SHELL} scripts/remove_crs.sh
 	${SHELL} scripts/wait_pods_terminating.sh ${NAMESPACE}
+	sudo rm -rf /var/lib/cni/networks/bans*
+	-for br in /sys/class/net/bans*; do sudo ip link delete `basename $$br` type bridge; done

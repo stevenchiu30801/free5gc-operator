@@ -4,6 +4,8 @@ metadata:
   name: {{ include "ransim.fullname" . }}
   labels:
     {{- include "ransim.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook-weight": "-5"
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -14,7 +16,8 @@ spec:
       labels:
         {{- include "ransim.selectorLabels" . | nindent 8 }}
       annotations:
-        cni.projectcalico.org/ipAddrs: "[\"{{ .Values.addr }}\"]"
+        cni.projectcalico.org/ipAddrs: "[\"{{ .Values.mgnt.addr }}\"]"
+        k8s.v1.cni.cncf.io/networks: ransim-bridge-net
     spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}

@@ -8,12 +8,16 @@ global:
   dbServiceDomain: mongo.default.svc.cluster.local
   nrf:
     addr: 192.168.2.4
+  mnCoreBridge:
+    subnet: 192.168.3.0/24
+  mnAccessBridge:
+    subnet: 192.168.3.0/24
 
 amf:
   http:
     addr: 192.168.2.2
   ngap:
-    addr: 192.168.2.2
+    addr: 192.168.3.2
 
 ausf:
   http:
@@ -42,7 +46,10 @@ udr:
     addr: 192.168.2.9
 
 ransim:
-  addr: 192.168.2.11
+  mgnt:
+    addr: 192.168.2.11
+  data:
+    addr: 192.168.3.11
   amf:
     ngap:
       addr: 192.168.2.2

@@ -20,7 +20,7 @@ fullnameOverride: ""
 http:
   addr: 192.168.2.2
 ngap:
-  addr: 192.168.2.2
+  addr: 192.168.3.2
 
 podSecurityContext: {}
 

@@ -5,6 +5,8 @@
 global:
   image:
     free5gc: {}
+  mnCoreBridge:
+    subnet: 192.168.3.0/24
 
 replicaCount: 1
 
@@ -20,7 +22,7 @@ fullnameOverride: ""
 pfcp:
   addr: 192.168.2.10
 gtpu:
-  addr: 192.168.2.10
+  addr: 192.168.3.10
 
 sliceIdx: {}
 

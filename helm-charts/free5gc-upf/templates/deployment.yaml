@@ -20,6 +20,7 @@ spec:
         bans.io/slice: slice{{ .Values.sliceIdx }}
       annotations:
         cni.projectcalico.org/ipAddrs: "[\"{{ .Values.pfcp.addr }}\"]"
+        k8s.v1.cni.cncf.io/networks: upf-slice{{ .Values.sliceIdx }}-bridge-net
     spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}

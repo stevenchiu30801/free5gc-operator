@@ -23,10 +23,7 @@ data:
   addr: 192.168.3.11
 amf:
   ngap:
-    addr: 192.168.2.2
-upf:
-  gtpu:
-    addr: 192.168.2.10
+    addr: 192.168.3.2
 
 podSecurityContext: {}
 

@@ -52,4 +52,4 @@ ransim:
     addr: 192.168.3.11
   amf:
     ngap:
-      addr: 192.168.2.2
+      addr: 192.168.3.2

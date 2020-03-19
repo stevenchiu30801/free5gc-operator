@@ -31,7 +31,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const ranIpAddr string = "{{ .Values.addr }}"
+const ranIpAddr string = "{{ .Values.data.addr }}"
 
 var (
 	ueIdx   int
@@ -163,7 +163,7 @@ func TestRegistration(t *testing.T) {
 	// RAN connect to AMF
 	//// HELM: Remove spaces in substitution to avoid unclosed action error
 	//// It seems to only occur when multiple substitution in one line
-	conn, err := connectToAmf("{{.Values.amf.ngap.addr}}", "{{.Values.addr}}", 38412, 9487)
+	conn, err := connectToAmf("{{.Values.amf.ngap.addr}}", "{{.Values.data.addr}}", 38412, 9487)
 	assert.Nil(t, err)
 
 	// send NGSetupRequest Msg

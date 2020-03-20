@@ -31,7 +31,7 @@ spec:
           image: {{ include "upf.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["/bin/bash"]
-          args: ["-c", "/root/setup.sh && cd src/upf/build && ./bin/free5gc-upfd"]
+          args: ["-c", "/root/setup.sh && ethtool -K net1 tx off && cd src/upf/build && ./bin/free5gc-upfd"]
           stdin: true
           tty: true
           volumeMounts:

@@ -28,7 +28,7 @@ spec:
           image: {{ include "amf.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["/bin/bash"]
-          args: ["-c", "./bin/amf"]
+          args: ["-c", "ethtool -K net1 tx off && ./bin/amf"]
           volumeMounts:
             - name: free5gc-config
               mountPath: /root/gofree5gc/config/free5GC.conf

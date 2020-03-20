@@ -28,6 +28,7 @@ spec:
           image: {{ include "ransim.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["/bin/bash"]
+          args: ["-c", "ethtool -K net1 tx off && sleep infinity"]
           stdin: true
           tty: true
           volumeMounts:

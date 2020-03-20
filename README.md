@@ -26,6 +26,9 @@ make install
 # Create a new CR
 kubectl apply -f deploy/crds/bans.io_v1alpha1_free5gcslice_cr1.yaml
 
+# Check if the new slice is running before proceeding
+kubectl get pods -l app.kubernetes.io/name=free5gc-smf,bans.io/slice=slice1 | grep Running
+
 # Set ransim pod variable
 export RANSIM_POD=$( kubectl get pods -l app.kubernetes.io/instance=free5gc -l app.kubernetes.io/name=ransim -o jsonpath='{.items[0].metadata.name}' )
 
@@ -47,6 +50,9 @@ kubectl exec $RANSIM_POD -- bash -c "cd src/test && go test -vet=off -run TestRe
 ```ShellSession
 # Uninstall all that all performed in the $ make install
 make uninstall
+
+# Execute the following scripts if uninstallation blocks at removing Free5GCSlice CRD
+./scripts/remove_finalizers.sh
 
 # Uninstall all BANS 5GC functions along with CR except Mongo DB
 make reset-free5gc

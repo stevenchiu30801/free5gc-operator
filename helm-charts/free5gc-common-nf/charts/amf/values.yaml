@@ -24,7 +24,8 @@ ngap:
 
 podSecurityContext: {}
 
-securityContext: {}
+securityContext:
+  privileged: true
 
 resources: {}
 

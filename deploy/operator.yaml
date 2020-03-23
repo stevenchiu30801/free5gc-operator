@@ -16,7 +16,7 @@ spec:
       containers:
         - name: free5gc-operator
           # Replace this with the built image name
-          image: steven30801/free5gc-operator:latest
+          image: steven30801/free5gc-operator:bmv2-fabric
           command:
           - free5gc-operator
           imagePullPolicy: Always

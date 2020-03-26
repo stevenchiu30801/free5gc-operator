@@ -15,7 +15,17 @@ endef
 
 .PHONY: setup install uninstall build reset-free5gc
 
-setup: ## Setup environment
+/nfsshare:
+	$(call echo_green," ...... Setup NFS Server ......")
+	sudo apt update
+	sudo apt install -y nfs-kernel-server
+	echo "/nfsshare   localhost(rw,sync,no_root_squash)" | sudo tee /etc/exports
+	sudo mkdir $@
+	sudo exportfs -r
+	# Check if /etc/exports is properly loaded
+	# showmount -e localhost
+
+setup: /nfsshare ## Setup environment
 	$(call echo_green," ...... Setup Environment ......")
 	kubectl apply -f https://raw.githubusercontent.com/intel/multus-cni/master/images/multus-daemonset.yml
 

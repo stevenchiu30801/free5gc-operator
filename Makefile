@@ -15,7 +15,17 @@ endef
 
 .PHONY: install uninstall build
 
-install: ## Install all resources (CR/CRD's, RBAC and Operator)
+/nfsshare:
+	$(call echo_green," ...... Setup NFS Server ......")
+	sudo apt update
+	sudo apt install -y nfs-kernel-server
+	echo "/nfsshare   localhost(rw,sync,no_root_squash)" | sudo tee /etc/exports
+	sudo mkdir $@
+	sudo exportfs -r
+	# Check if /etc/exports is properly loaded
+	# showmount -e localhost
+
+install: /nfsshare ## Install all resources (CR/CRD's, RBAC and Operator)
 	$(call echo_green," ....... Creating namespace .......")
 	-kubectl create namespace ${NAMESPACE}
 	$(call echo_green," ....... Applying CRDs .......")

@@ -2,6 +2,8 @@
 
 A Kubernetes operator for deploying and managing free5GC network slices in BANS 5GC.
 
+NOTE: In *bmv2-fabric* branch, ONOS Operator is required to provide bandwidth management fabric network.
+
 ## Prerequisites
 
 See [operator-framework/operator-sdk](https://github.com/operator-framework/operator-sdk#prerequisites).

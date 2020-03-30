@@ -22,10 +22,10 @@ podSecurityContext: {}
 securityContext: {}
 
 service:
-  dbServiceType: ClusterIP
+  dbServiceType: NodePort
   db:
     port: 27017
-    targetPort: 27017
+    nodePort: 30017
 
 resources: {}
 

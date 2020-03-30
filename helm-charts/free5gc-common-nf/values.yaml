@@ -18,6 +18,7 @@ amf:
     addr: 192.168.2.2
   ngap:
     addr: 192.168.3.2
+    subnet: 192.168.3.0/24
 
 ausf:
   http:

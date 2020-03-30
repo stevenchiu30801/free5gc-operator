@@ -1,0 +1,22 @@
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: amf-sriov-net
+  annotations:
+    k8s.v1.cni.cncf.io/resourceName: intel.com/sriov_net
+    "helm.sh/hook-weight": "-10"
+spec:
+  config: '{
+  "type": "sriov",
+  "cniVersion": "0.3.1",
+  "name": "amf-sriov",
+  "ipam": {
+    "type": "host-local",
+    "subnet": "{{ .Values.ngap.subnet }}"
+  },
+  "args": {
+    "cni": {
+      "ips": ["{{ .Values.ngap.addr }}"]
+    }
+  }
+}'

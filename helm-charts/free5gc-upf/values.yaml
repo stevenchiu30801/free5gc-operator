@@ -23,6 +23,7 @@ pfcp:
   addr: 192.168.2.10
 gtpu:
   addr: 192.168.3.10
+  subnet: 192.168.3.0/24
 
 sliceIdx: {}
 
@@ -31,7 +32,11 @@ podSecurityContext: {}
 securityContext:
   privileged: true
 
-resources: {}
+resources:
+  requests:
+    intel.com/sriov_net: '1'
+  limits:
+    intel.com/sriov_net: '1'
 
 nodeSelector: {}
 

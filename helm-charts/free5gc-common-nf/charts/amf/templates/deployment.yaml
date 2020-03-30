@@ -17,7 +17,7 @@ spec:
         {{- include "amf.selectorLabels" . | nindent 8 }}
       annotations:
         cni.projectcalico.org/ipAddrs: "[\"{{ .Values.http.addr }}\"]"
-        k8s.v1.cni.cncf.io/networks: amf-bridge-net
+        k8s.v1.cni.cncf.io/networks: amf-sriov-net
     spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}

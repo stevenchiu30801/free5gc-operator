@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: testscripts-configmap
-data:
-{{ tpl (.Files.Glob "testscripts/*").AsConfig . | indent 2 }}

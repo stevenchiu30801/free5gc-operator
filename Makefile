@@ -117,5 +117,3 @@ reset-free5gc: ## Uninstall all free5GC functions along with CR except Mongo DB
 	-${SHELL} scripts/clear_mongo.sh
 	-${SHELL} scripts/remove_crs.sh
 	${SHELL} scripts/wait_pods_terminating.sh ${NAMESPACE}
-	sudo rm -rf /var/lib/cni/networks/bans*
-	-for br in /sys/class/net/bans*; do sudo ip link delete `basename $$br` type bridge; done

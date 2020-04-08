@@ -311,7 +311,7 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 	// Access the first AMF
-	// Decode IP address of banscore bridge interface from pod metadata
+	// Decode IP address of AMF SR-IOV interface from pod metadata
 	amfNetworkStatus := amfList.Items[0].ObjectMeta.Annotations["k8s.v1.cni.cncf.io/networks-status"]
 	var decoded []map[string]interface{}
 	err = json.Unmarshal([]byte(amfNetworkStatus), &decoded)
@@ -319,7 +319,7 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 	for _, item := range decoded {
-		if item["name"].(string) == "banscore" {
+		if item["name"].(string) == "amf-sriov" {
 			instance.Status.AmfAddr = item["ips"].([]interface{})[0].(string)
 			break
 		}

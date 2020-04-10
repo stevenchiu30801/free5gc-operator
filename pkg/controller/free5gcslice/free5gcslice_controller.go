@@ -35,7 +35,6 @@ const (
 )
 
 // TODO(dev): Use database or volume to maintain the following soft state
-var sliceIdx int = 1
 var free5gcsliceMap map[string]int = make(map[string]int)
 var controlIpPoolNetworkID24 string = "192.168.2."
 var controlIpPoolHostID int = 100
@@ -196,6 +195,13 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
+	// Set free5GC slice index from BANS slice label
+	var sliceIdx int
+	_, err = fmt.Sscanf(instance.ObjectMeta.Labels["bans.io/slice"], "slice%d", &sliceIdx)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// Check if Mongo DB already exists, if not create a new one
 	mongo := &appsv1.StatefulSet{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: "mongo", Namespace: instance.Namespace}, mongo)
@@ -298,7 +304,6 @@ func (r *ReconcileFree5GCSlice) Reconcile(request reconcile.Request) (reconcile.
 
 	// Maintain mapping between Free5GCSlice object name and slice ID
 	free5gcsliceMap[instance.Name] = sliceIdx
-	sliceIdx++
 
 	// Update Free5GCSlice.Status.AmfAddr, Free5GCSlice.Status.UpfAddr and Free5GCSlice.Status.State
 	amfList := &corev1.PodList{}

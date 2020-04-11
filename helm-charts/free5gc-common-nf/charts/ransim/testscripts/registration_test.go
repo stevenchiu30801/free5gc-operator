@@ -328,6 +328,38 @@ func TestRegistration(t *testing.T) {
 	assert.Nil(t, err)
 	fmt.Printf("UPF %s connected\n", upfAddr)
 
+	// receive ICMP packets
+	sentTime := make(map[uint16]time.Time)
+	go func(sentTime *map[uint16]time.Time) {
+		for {
+			// receive icmp response
+			n, err = upfConn.Read(recvMsg)
+			assert.Nil(t, err)
+			recvTime := time.Now()
+
+			// decode packet
+			var gtpu layers.GTPv1U
+			var ip4 layers.IPv4
+			var icmp4 layers.ICMPv4
+			var payload gopacket.Payload
+			parser := gopacket.NewDecodingLayerParser(layers.LayerTypeGTPv1U, &gtpu, &ip4, &icmp4, &payload)
+			decoded := []gopacket.LayerType{}
+			err = parser.DecodeLayers(recvMsg, &decoded)
+			if err != nil {
+				fmt.Println("  Error encountered:", err)
+			}
+			var ttl uint8
+			for _, layerType := range decoded {
+				switch layerType {
+				case layers.LayerTypeIPv4:
+					ttl = ip4.TTL
+				case layers.LayerTypeICMPv4:
+					elapsed := recvTime.Sub((*sentTime)[icmp4.Seq])
+					fmt.Printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.2f ms\n", len(payload), icmpDst, icmp4.Seq, ttl, float64(elapsed)/float64(time.Millisecond))
+				}
+			}
+		}
+	}(&sentTime)
 	// send ICMP packets
 	fmt.Printf("Send %d ICMP packet(s) to %s\n", icmpCnt, icmpDst)
 	for i := 0; i < icmpCnt; i++ {
@@ -376,38 +408,7 @@ func TestRegistration(t *testing.T) {
 
 		_, err = upfConn.Write(gtpPacket)
 		assert.Nil(t, err)
-		sentTime := time.Now()
-
-		go func() {
-			// receive icmp response
-			n, err = upfConn.Read(recvMsg)
-			assert.Nil(t, err)
-			recvTime := time.Now()
-			elapsed := recvTime.Sub(sentTime)
-
-			// decode packet
-			var gtpu layers.GTPv1U
-			var ip4 layers.IPv4
-			var icmp4 layers.ICMPv4
-			var payload gopacket.Payload
-			parser := gopacket.NewDecodingLayerParser(layers.LayerTypeGTPv1U, &gtpu, &ip4, &icmp4, &payload)
-			decoded := []gopacket.LayerType{}
-			err = parser.DecodeLayers(recvMsg, &decoded)
-			var ttl uint8
-			for _, layerType := range decoded {
-				switch layerType {
-				case layers.LayerTypeIPv4:
-					ttl = ip4.TTL
-				case layers.LayerTypeICMPv4:
-					if icmp4.Seq == uint16(i) {
-						fmt.Printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.2f ms\n", len(payload), icmpDst, i, ttl, float64(elapsed)/float64(time.Millisecond))
-					}
-				}
-			}
-			if err != nil {
-				fmt.Println("  Error encountered:", err)
-			}
-		}()
+		sentTime[uint16(i)] = time.Now()
 
 		// wait one second interval
 		time.Sleep(1 * time.Second)

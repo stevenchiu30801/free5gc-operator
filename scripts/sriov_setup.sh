@@ -42,7 +42,15 @@ if ! dmesg | grep 'DMAR: IOMMU enabled' >/dev/null; then
         1. Append 'intel_iommu=on' to the 'GRUM_CMDLINE_LINUX' entry in /etc/default/grub\n\
         2. Update grub with command 'update-grub'\n\
         3. Reboot for IOMMU change to take effect"
-    exit 1
+
+    while true; do
+        read -p "Continue SR-IOV setup [Y/n] " continue_setup
+        if [[ $continue_setup == "n" ]] || [[ $continue_setup == "N" ]]; then
+            exit 1
+        elif [[ $continue_setup == "" ]] || [[ $continue_setup == "y" ]] || [[ $continue_setup == "Y" ]]; then
+            break
+        fi
+    done
 fi
 
 # Get the driver used by the device

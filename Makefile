@@ -22,6 +22,10 @@ define echo_red
 	@echo -e "${COLOR_LIGHT_RED}${1}${COLOR_WHITE}"
 endef
 
+.PHONY: sriovdp
+
+sriovdp: $(R)/sriov-network-device-plugin/build/sriovdp
+
 # https://golang.org/doc/install#install
 /usr/local/go:
 	curl -O -L https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz
